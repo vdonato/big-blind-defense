@@ -1,10 +1,13 @@
 from enum import Enum
 import random
 
+import numpy as np
 
-class Players(Enum):
-    HERO = 0
-    VILLAIN = 1
+
+class Action(Enum):
+    FOLD = 0
+    CALL = 1
+    RAISE = 2
 
 
 class GameState(Enum):
@@ -13,6 +16,11 @@ class GameState(Enum):
     VS_3BET = 2
     VS_4BET = 3
     HAND_OVER = 4
+
+
+class Player(Enum):
+    HERO = 0
+    VILLAIN = 1
 
 
 def _card_to_index(card):
@@ -33,41 +41,15 @@ def _card_to_index(card):
     }[card]
 
 
-def _strategy_for_hand(hand, decision_point):
-    range_matrix = decision_point.range_matrix
-
-    # Hacky way to get cards and suits from a hand given how we format them.
-    c1, s1, _, c2, s2 = hand
-
-    # The convention that we follow in our range matrix is that suited hands
-    # correspond to entries that order the indices in increasing order, and
-    # offsuit hands correspond to those ordering the indices in decreasing
-    # order. For example, AKs is entry (0, 1) in our matrix, and AKo is entry
-    # (1, 0).
-    offsuit_hand = s1 != s2
-    i1, i2 = sorted([_card_to_index(c1), _card_to_index(c2)], reverse=offsuit_hand)
-
-    return decision_point.range_matrix[i1][i2]
-
-
-def valid_hand(hand, decision_point):
-    """Return whether the given hand is one that can be held at the given
-    decision_point if all players follow our approximations to Nash Equilibrium
-    strategies.
-    """
-    raise_freq, call_freq, fold_freq = _strategy_for_hand()
-    return (raise_freq + call_freq + fold_freq) > 0
-
-
 def next_state(curr_state, action):
-    if action in ["CALL", "FOLD"]:
+    if action in [Action.CALL, Action.FOLD]:
         return GameState.HAND_OVER
-    else:  # Action is "RAISE"
+    else:  # action is Action.RAISE
         return {
-            "START": GameState.VS_OPEN,
-            "VS_OPEN": GameState.VS_3BET,
-            "VS_3BET": GameState.VS_4BET,
-            "VS_4BET": GameState.HAND_OVER,
+            GameState.START: GameState.VS_OPEN,
+            GameState.VS_OPEN: GameState.VS_3BET,
+            GameState.VS_3BET: GameState.VS_4BET,
+            GameState.VS_4BET: GameState.HAND_OVER,
         }[curr_state]
 
 
@@ -75,9 +57,43 @@ class DecisionPoint:
     def __init__(self, range_matrix):
         self.range_matrix = range_matrix
 
+    def _strategy_for_hand(self, hand):
+        range_matrix = self.range_matrix
+
+        # Hacky way to get cards and suits from a hand given how we format them.
+        c1, s1, _, c2, s2 = hand
+
+        # The convention that we follow in our range matrix is that suited hands
+        # correspond to entries that order the indices in increasing order, and
+        # offsuit hands correspond to those ordering the indices in decreasing
+        # order. For example, AKs is entry (0, 1) in our matrix, and AKo is entry
+        # (1, 0).
+        offsuit_hand = s1 != s2
+        i1, i2 = sorted([_card_to_index(c1), _card_to_index(c2)], reverse=offsuit_hand)
+
+        return self.range_matrix[i1][i2]
+
+    def is_valid_hand(self, hand):
+        """Return whether the given hand is one that can be held at this decision
+        point if all players follow our approximations of Nash Equilibrium
+        strategies.
+        """
+        return sum(_strategy_for_hand(hand)) > 0
+
+    def is_valid_action(self, hand, action):
+        raise_freq, call_freq, fold_freq = self._strategy_for_hand(hand)
+
+        if action == Action.RAISE:
+            return raise_freq > 0
+        elif action == Action.CALL:
+            return call_freq > 0
+        return fold_freq > 0
+
     def pick_action(self, hand):
-        raise_freq, call_freq, fold_freq = _strategy_for_hand(hand, self)
-        # TODO: Pick an action using distribution fetched above.
+        actions = (Action.RAISE, Action.CALL, Action.FOLD)
+        frequencies = self._strategy_for_hand(hand)
+
+        return random.choices(actions, weights=frequencies)
 
 
 # fmt: off

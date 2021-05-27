@@ -3,9 +3,14 @@ import random
 import streamlit as st
 from poker import Card
 
+from strategies import Action, GameState, Player
+
 
 # If not enough time, just do UTG vs BB
-OPPONENT_POSITIONS = ["UTG", "HJ", "CO", "BU", "SB"]
+VILLAIN_POSITIONS = (
+    "UTG",
+    # "HJ", "CO", "BU", "SB"
+)
 
 
 def deal_hands():
@@ -16,10 +21,19 @@ def deal_hands():
     return hand1, hand2
 
 
+def new_hand():
+    st.session_state.actions_this_hand = []
+    st.session_state.game_state = GameState.START
+    st.session_state.current_player = Player.VILLAIN
+    if "hands_played" in st.session_state:
+        st.session_state.hands_played += 1
+    else:
+        st.session_state.hands_played = 0
+
+
 if "initialized" not in st.session_state:
     st.session_state.initialized = True
-    st.session_state.last_action = None
-    st.session_state.hands_played = 0
+    new_hand()
     st.session_state.mistakes_made = 0
 
 
