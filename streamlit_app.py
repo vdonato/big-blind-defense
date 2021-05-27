@@ -12,6 +12,8 @@ VILLAIN_POSITIONS = (
     # "HJ", "CO", "BU", "SB"
 )
 
+state = st.session_state
+
 
 def deal_hands():
     deck = [str(c) for c in list(Card)]
@@ -22,19 +24,19 @@ def deal_hands():
 
 
 def new_hand():
-    st.session_state.actions_this_hand = []
-    st.session_state.game_state = GameState.START
-    st.session_state.current_player = Player.VILLAIN
-    if "hands_played" in st.session_state:
-        st.session_state.hands_played += 1
+    state.actions_this_hand = []
+    state.game_state = GameState.START
+    state.current_player = Player.VILLAIN
+    if "hands_played" in state:
+        state.hands_played += 1
     else:
-        st.session_state.hands_played = 0
+        state.hands_played = 0
 
 
-if "initialized" not in st.session_state:
-    st.session_state.initialized = True
+if "initialized" not in state:
+    state.initialized = True
     new_hand()
-    st.session_state.mistakes_made = 0
+    state.mistakes_made = 0
 
 
 st.write("# Poker Big Blind Defense Preflop Trainer")
